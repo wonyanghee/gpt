@@ -1,0 +1,23 @@
+{
+  "name": "ssense-archive-minimalist",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:e2e": "playwright test",
+    "demo": "python -m http.server 3000"
+  },
+  "dependencies": {
+    "next": "16.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/react": "19.2.2",
+    "@types/node": "24.6.0",
+    "@playwright/test": "1.54.2"
+  }
+}
