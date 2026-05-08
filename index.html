@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSENSE Archive Minimalist - HTML Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f4f5;--surface:#fff;--text:#121212;--muted:#828282;--border:#e2e2e6;--accent:#f2520d;--r-sm:4px;--r-md:8px}
+    *{box-sizing:border-box}body{margin:0;font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text)}
+    .app{display:grid;grid-template-columns:256px 1fr;min-height:100vh}.side{background:var(--surface);border-right:1px solid var(--border);padding:1rem}
+    .logo{font-weight:700;margin:0 0 1.5rem}.item{padding:.75rem;border-radius:var(--r-md);color:var(--muted)}.item.active{background:var(--bg);color:var(--text);font-weight:700}
+    .main{padding:2.5rem}.container{max-width:1200px;margin:0 auto}h1{margin:0 0 1.5rem;font-size:36px;line-height:1.2;letter-spacing:-.02em}
+    .tabs{display:flex;gap:2rem;border-bottom:1px solid var(--border);margin-bottom:1rem}.tab{background:none;border:0;border-bottom:2px solid transparent;padding:.75rem 0;color:var(--muted);font-weight:500;cursor:pointer}.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:700}
+    .toolbar{display:flex;justify-content:space-between;gap:1rem;align-items:center;margin:0 0 1.5rem}.search{width:min(420px,100%);border:1px solid var(--border);background:var(--surface);padding:.7rem .85rem;border-radius:var(--r-md)}.search:focus{outline:none;border-color:var(--text)}
+    .meta{display:flex;align-items:center;gap:.5rem}.mode{border:1px solid var(--border);padding:.35rem .55rem;background:var(--surface);border-radius:var(--r-sm);font-weight:700;cursor:pointer;color:var(--muted)}.mode.active{color:var(--text);border-color:var(--text)}.count{font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:700}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem}.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}.media{aspect-ratio:3/4;background:#ddd;position:relative;overflow:hidden}.media::before{content:'';position:absolute;inset:0;background:linear-gradient(145deg,#bdbdbd,#e8e8e8);transition:transform .25s ease}.card:hover .media::before{transform:scale(1.05)}
+    .badge{position:absolute;top:.5rem;left:.5rem;border:1px solid var(--text);background:#fff;border-radius:var(--r-sm);font-size:10px;font-weight:700;letter-spacing:.1em;padding:.25rem .4rem}.body{padding:.75rem;display:grid;gap:.5rem}.name{font-size:14px;font-weight:700}.muted{font-size:14px;color:var(--muted)}.price{font-size:12px;font-weight:700}
+    body.mode-b .card{border-color:var(--text)} body.mode-b .tab.active{border-bottom-width:3px}
+    @media (max-width:1024px){.app{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--border)}.main{padding:1rem}.grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<div class="app"><aside class="side"><p class="logo">SSENSE ARCHIVE</p><div class="item active">Catalog</div><div class="item">Saved</div><div class="item">Sale</div></aside>
+<main class="main"><div class="container"><h1>Technical Minimal Catalog</h1><nav class="tabs" id="tabs"></nav><div class="toolbar"><input id="search" class="search" placeholder="Search artifacts" /><div class="meta"><button class="mode active" data-mode="a">A</button><button class="mode" data-mode="b">B</button><span id="count" class="count"></span></div></div><section id="grid" class="grid"></section></div></main></div>
+<script>
+const items=[
+{id:1,name:'Arc Shell Jacket',category:'OUTERWEAR',line:'Technical Outerwear',price:480,badge:'쇼핑몰 캡처'},
+{id:2,name:'Ripstop Utility Vest',category:'TOPS',line:'Layering System',price:220,badge:'ARCHIVE'},
+{id:3,name:'Panel Cargo Trouser',category:'PANTS',line:'Structured Bottoms',price:310,badge:'NEW'},
+{id:4,name:'Softshell Field Parka',category:'OUTERWEAR',line:'Climate Ready',price:540,badge:'CURATED'}
+];
+const tabs=['ALL','OUTERWEAR','TOPS','PANTS']; let tab='ALL'; let q='';
+const tabsEl=document.getElementById('tabs'); const grid=document.getElementById('grid'); const count=document.getElementById('count');
+function renderTabs(){tabsEl.innerHTML=tabs.map(t=>`<button class="tab ${tab===t?'active':''}" data-tab="${t}">${t}</button>`).join(''); tabsEl.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render();});}
+function view(){const byTab=tab==='ALL'?items:items.filter(i=>i.category===tab);const qq=q.trim().toLowerCase();return qq?byTab.filter(i=>(i.name+' '+i.line).toLowerCase().includes(qq)):byTab;}
+function render(){const v=view(); grid.innerHTML=v.map(i=>`<article class="card"><div class="media"><span class="badge">${i.badge}</span></div><div class="body"><div class="name">${i.name}</div><div class="muted">${i.line}</div><div class="price">$${i.price}</div></div></article>`).join('');count.textContent=`${v.length} ITEMS`;renderTabs();}
+document.getElementById('search').oninput=e=>{q=e.target.value;render();};
+document.querySelectorAll('.mode').forEach(btn=>btn.onclick=()=>{document.body.classList.toggle('mode-b',btn.dataset.mode==='b');document.querySelectorAll('.mode').forEach(m=>m.classList.remove('active'));btn.classList.add('active');});
+render();
+</script>
+</body>
+</html>
