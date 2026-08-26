@@ -1,4 +1,4 @@
-# Final content-repair pass: 2026-08-27
+# Final database-skill repair and 11/11 verification: 2026-08-27
 name: RK One-time OpenAI Skills Upload
 
 on:
@@ -15,20 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Invoke upload, list verification, and content verification
+      - name: Repair database skill and verify all 11 remote packages
         shell: bash
         run: |
           set -euo pipefail
 
-          UPLOAD_URL='https://lbeevzcceemlgimcevdo.supabase.co/functions/v1/rk-skills-13fb6903e52f050df8307d1b8608ec1f'
+          FIX_URL='https://lbeevzcceemlgimcevdo.supabase.co/functions/v1/rk-fix-db-7c4e9a2b20260827'
           STATUS_URL='https://lbeevzcceemlgimcevdo.supabase.co/functions/v1/rk-status-a8c31e72'
           CONTENT_URL='https://lbeevzcceemlgimcevdo.supabase.co/functions/v1/rk-content-check-42f7d9c1'
 
-          upload_code="$(curl --silent --show-error --max-time 300 --output /tmp/upload.json --write-out '%{http_code}' "$UPLOAD_URL" || true)"
+          fix_code="$(curl --silent --show-error --max-time 300 --output /tmp/fix.json --write-out '%{http_code}' "$FIX_URL" || true)"
           status_code="$(curl --silent --show-error --max-time 120 --output /tmp/status.json --write-out '%{http_code}' "$STATUS_URL" || true)"
           content_code="$(curl --silent --show-error --max-time 300 --output /tmp/content.json --write-out '%{http_code}' "$CONTENT_URL" || true)"
 
-          UPLOAD_CODE="$upload_code" STATUS_CODE="$status_code" CONTENT_CODE="$content_code" python3 - <<'PY'
+          FIX_CODE="$fix_code" STATUS_CODE="$status_code" CONTENT_CODE="$content_code" python3 - <<'PY'
           import json
           import os
           import re
@@ -42,16 +42,16 @@ jobs:
               except Exception:
                   return {'parse_error': True, 'raw': text[:3000]}
 
-          upload = read_json('/tmp/upload.json')
+          fix = read_json('/tmp/fix.json')
           status = read_json('/tmp/status.json')
           content = read_json('/tmp/content.json')
           report = {
               'http_status': {
-                  'upload': os.environ.get('UPLOAD_CODE'),
+                  'database_skill_repair': os.environ.get('FIX_CODE'),
                   'remote_list': os.environ.get('STATUS_CODE'),
                   'remote_content': os.environ.get('CONTENT_CODE'),
               },
-              'upload': upload,
+              'database_skill_repair': fix,
               'remote_list': status,
               'remote_content': content,
           }
@@ -59,9 +59,9 @@ jobs:
           print(json.dumps(report, ensure_ascii=False, indent=2))
           print('RESULT_JSON_END')
 
+          fix_ok = fix.get('verified') is True and fix.get('remote_verified') is True
           list_ok = status.get('ok') is True and status.get('count') == 11
           content_ok = content.get('verified') is True and content.get('count') == 11 and content.get('mismatch_count') == 0
-          upload_ok = upload.get('verified') is True and upload.get('present_count') == 11 and upload.get('content_verified_count') == 11
-          if not (list_ok and content_ok and upload_ok):
+          if not (fix_ok and list_ok and content_ok):
               raise SystemExit('Remote 11/11 verification failed')
           PY
