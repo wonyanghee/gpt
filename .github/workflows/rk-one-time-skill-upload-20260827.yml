@@ -1,3 +1,4 @@
+# Final content-repair pass: 2026-08-27
 name: RK One-time OpenAI Skills Upload
 
 on:
@@ -60,7 +61,7 @@ jobs:
 
           list_ok = status.get('ok') is True and status.get('count') == 11
           content_ok = content.get('verified') is True and content.get('count') == 11 and content.get('mismatch_count') == 0
-          upload_ok = upload.get('verified') is True and upload.get('present_count') == 11
-          if not (list_ok and content_ok and (upload_ok or list_ok)):
+          upload_ok = upload.get('verified') is True and upload.get('present_count') == 11 and upload.get('content_verified_count') == 11
+          if not (list_ok and content_ok and upload_ok):
               raise SystemExit('Remote 11/11 verification failed')
           PY
