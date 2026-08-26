@@ -1,0 +1,36 @@
+name: RK One-time OpenAI Skills Upload
+
+on:
+  push:
+    paths:
+      - '.github/workflows/rk-one-time-skill-upload-20260827.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Invoke one-time upload and verify result
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 300 \
+            'https://lbeevzcceemlgimcevdo.supabase.co/functions/v1/rk-skills-13fb6903e52f050df8307d1b8608ec1f' \
+            --output /tmp/openai-skills-result.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path('/tmp/openai-skills-result.json').read_text())
+          print('RESULT_JSON_BEGIN')
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          print('RESULT_JSON_END')
+          if not result.get('verified'):
+              raise SystemExit('Remote 11/11 verification failed')
+          if result.get('present_count') != result.get('expected_count'):
+              raise SystemExit('Remote skill count mismatch')
+          PY
