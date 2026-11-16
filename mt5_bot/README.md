@@ -138,6 +138,10 @@ python run_backtest.py --symbol GOLD --csv data\XAUUSD_M15.csv --strategies brea
 - `symbols[].backtest` 의 `contract_size`(1랏당 가격 1 변동 손익), `spread`, `commission_per_lot` 을 브로커 계약 명세에 맞춰야 금액이 정확합니다
 - 체결 가정: 종가 신호 → 다음 봉 시가 체결, 비상손절은 봉 고가/저가로 체크(갭이면 시가). 일일손실 한도·스프레드 필터는 백테스트에 미반영
 - 파라미터를 바꿔가며 테스트하되, **기간을 나눠(예: 앞 70% 최적화 / 뒤 30% 검증)** 과최적화를 피하세요
+  ```bat
+  python run_backtest.py --symbol GOLD --csv data\XAUUSD_M15.csv --end 2025-09-01     :: 탐색 구간
+  python run_backtest.py --symbol GOLD --csv data\XAUUSD_M15.csv --start 2025-09-01   :: 검증 구간
+  ```
 
 ## 2단계: 드라이런 (기본값)
 
@@ -175,6 +179,12 @@ pip install pandas numpy pyyaml pytest
 python -m pytest -q
 ```
 MT5 없이도(리눅스/맥 포함) 전략, 백테스트 체결 로직, 엔진(진입/청산/반전/롤오버/일일한도/스프레드/시간대/수량 계산/서버청산 감지), 드라이런, 설정 검증을 테스트합니다.
+
+## 에이전트 팀으로 개발하기
+
+Claude Code 에서 이 저장소를 열면 역할별 서브에이전트 5개를 쓸 수 있습니다 (정의: 저장소 루트의 `.claude/agents/`).
+전략 연구원, 봇 개발자, 리스크 검수자, 테스트 담당, 운영 분석가이며, 구성·작업 절차·역할별 지침은
+[`docs/agent-team.md`](docs/agent-team.md) 에 있습니다. 다른 AI 도구에서는 그 문서의 지침을 시스템 프롬프트로 붙여 쓰면 됩니다.
 
 ## 알아둘 점 / 다음 개선 후보
 

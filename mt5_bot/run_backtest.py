@@ -6,6 +6,10 @@
     # MT5 에서 직접 과거 봉을 받아서 (Windows) - 받은 데이터는 data/ 에 CSV 로 저장
     python run_backtest.py --config config.yaml --symbol GOLD --from-mt5 --bars 50000
 
+    # 기간을 나눠 탐색/검증 (과최적화 방지)
+    python run_backtest.py --symbol GOLD --csv gold.csv --end 2025-09-01     # 탐색 구간
+    python run_backtest.py --symbol GOLD --csv gold.csv --start 2025-09-01   # 검증 구간
+
     # 전략 하나씩 비교
     python run_backtest.py --config config.yaml --symbol GOLD --csv gold.csv --strategies trend
 """
@@ -31,6 +35,8 @@ def main() -> int:
     ap.add_argument("--bars", type=int, default=50000, help="--from-mt5 사용 시 봉 개수")
     ap.add_argument("--strategies", help="쉼표로 구분 (기본: config 의 strategies)")
     ap.add_argument("--out", default="backtest_results")
+    ap.add_argument("--start", help="이 날짜부터 (예: 2025-01-01). 탐색/검증 구간을 나눌 때 사용")
+    ap.add_argument("--end", help="이 날짜 전까지 (예: 2025-09-01, 해당 날짜는 제외)")
     args = ap.parse_args()
 
     try:
@@ -59,6 +65,14 @@ def main() -> int:
         df.to_csv(csv_path)
         print(f"MT5 데이터 저장: {csv_path}")
 
+    if args.start:
+        df = df[df.index >= args.start]
+    if args.end:
+        df = df[df.index < args.end]
+    if len(df) < 500:
+        print(f"봉이 너무 적습니다({len(df)}개). --start/--end 또는 데이터를 확인하세요")
+        return 2
+
     names = args.strategies.split(",") if args.strategies else sc.strategies
     strategies = {n.strip(): make_strategy(n.strip(), cfg.params_for(sc, n.strip())) for n in names}
 
@@ -80,6 +94,8 @@ def main() -> int:
     print(json.dumps(result.stats, ensure_ascii=False, indent=2))
 
     prefix = f"{sc.key}_{'+'.join(strategies)}"
+    if args.start or args.end:
+        prefix += f"_{args.start or ''}~{args.end or ''}"
     result.save(Path(args.out), prefix)
     print(f"결과 저장: {args.out}/{prefix}_trades.csv, {prefix}_equity.csv")
     return 0
