@@ -1,0 +1,104 @@
+# MT5 나스닥 + 금 자동매매 봇 설정 예시
+# 사용법: 이 파일을 config.yaml 로 복사한 뒤 브로커에 맞게 수정하세요.
+#   copy config.example.yaml config.yaml   (Windows)
+
+mode:
+  dry_run: true            # true: 실제 주문을 보내지 않고 가상 체결만 기록 (기본값)
+  live_confirm: ""         # 실거래 전환: dry_run: false + 여기에 I_UNDERSTAND_THE_RISK 입력
+  dry_run_balance: null    # 드라이런 가상 잔고 (null 이면 실제 계좌 잔고로 시작)
+
+poll_seconds: 10           # 몇 초마다 확인할지 (신호는 새 봉이 완성될 때만 판단)
+magic: 240001              # 이 봇이 낸 주문을 구분하는 번호 (다른 EA 와 겹치지 않게)
+
+mt5:
+  terminal_path: ""        # 비우면 기본 설치된 MT5 사용. 여러 개면 terminal64.exe 경로 지정
+  # 로그인 정보는 파일에 쓰지 말고 환경변수로: MT5_LOGIN / MT5_PASSWORD / MT5_SERVER
+  # (MT5 터미널에 이미 로그인돼 있으면 필요 없음)
+
+risk:
+  daily_max_loss_pct: 3.0          # 오늘 손익(실현+평가)이 시작잔고의 -3% 이하면 그날 신규 진입 중단
+  close_all_on_daily_limit: false  # true 면 한도 도달 시 봇 포지션 전량 청산
+  sl_atr_mult: 3.0                 # 비상 손절 = 진입가 -/+ ATR x 3 (서버에 SL 로 걸림)
+  sl_atr_period: 14                # 선물 롤오버 재진입 시 손절 계산용 ATR 기간
+
+telegram:
+  enabled: false           # true 로 바꾸고 환경변수 TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID 설정
+
+logging:
+  dir: logs                # bot.log, trades.csv, dry_run_state.json 저장 위치
+
+backtest:
+  initial_balance: 10000
+
+# 전략 기본 파라미터 (종목별로 symbols[].params 에서 덮어쓸 수 있음)
+strategy_params:
+  trend:                   # 추세추종: EMA 교차 + 상위봉 EMA 필터 + ADX 필터, 반대 교차 시 청산
+    fast: 20
+    slow: 50
+    htf_ema: 200           # 상위봉 EMA 기간 (0 = 필터 끔)
+    adx_period: 14
+    adx_min: 20            # ADX 가 이 값 미만(횡보)이면 진입 안 함 (0 = 끔)
+    atr_period: 14
+  breakout:                # N봉 박스권 돌파, 반대편 exit_lookback 봉 극값 돌파 시 청산
+    lookback: 20           # 박스 = 직전 20봉 고가/저가
+    exit_lookback: 10
+    atr_period: 14
+    max_box_atr: 5.0       # 박스 폭이 ATR x 5 이하일 때만 '박스권'으로 인정 (0 = 끔)
+    buffer_atr: 0.1        # 박스 상/하단 + ATR x 0.1 넘어야 돌파 인정 (가짜 돌파 완화)
+    volume_mult: 0         # >0 이면 틱거래량이 평균 x 배 이상일 때만 (0 = 끔)
+    volume_period: 20
+
+symbols:
+  # ---------------- CFD ----------------
+  - key: NASDAQ
+    type: cfd
+    symbol: US100            # 브로커 종목명 확인! (NAS100, USTEC, US100.cash 등)
+    timeframe: M15
+    htf_timeframe: H1
+    lot: 0.1                 # 고정 랏
+    max_spread_points: 300   # 스프레드가 300 포인트 초과면 진입 보류 (0 = 끔) - 브로커 point 단위 확인
+    strategies: [trend, breakout]   # 앞에 있는 전략 신호가 우선. 하나만 쓰려면 [trend]
+    params: {}               # 예: { trend: { adx_min: 25 } }
+    backtest:
+      contract_size: 1       # 1랏 기준 가격 1 변동 시 손익 (브로커 계약 명세 확인)
+      spread: 1.5            # 백테스트용 고정 스프레드 (가격 단위)
+      commission_per_lot: 0
+
+  - key: GOLD
+    type: cfd
+    symbol: XAUUSD           # GOLD, XAUUSD.m 등 브로커마다 다름
+    timeframe: M15
+    htf_timeframe: H1
+    lot: 0.01
+    max_spread_points: 60
+    strategies: [breakout, trend]
+    params: {}
+    backtest:
+      contract_size: 100     # 1랏 = 100온스 (일반적)
+      spread: 0.3
+      commission_per_lot: 0
+
+  # ---------------- CME 선물 예시 (선물 지원 브로커에서 사용) ----------------
+  # - key: NASDAQ_FUT
+  #   type: futures
+  #   root: MNQ                    # 이 접두어로 시작하는 월물 중 가장 가까운 월물을 자동 선택
+  #   # symbol: MNQZ26             # 특정 월물로 고정하고 싶으면 지정 (자동 롤오버 안 함)
+  #   roll_days_before_expiry: 5   # 만기 5일 전이면 다음 월물로 교체
+  #   roll_reopen: true            # 교체 시 기존 포지션 청산 후 새 월물로 같은 방향 재진입
+  #   timeframe: M15
+  #   htf_timeframe: H1
+  #   lot: 1                       # 계약 수
+  #   max_spread_points: 0
+  #   strategies: [trend]
+  #   backtest: { contract_size: 2, spread: 0.25, commission_per_lot: 1.5 }   # MNQ: 1pt = $2
+  #
+  # - key: GOLD_FUT
+  #   type: futures
+  #   root: MGC
+  #   roll_days_before_expiry: 5
+  #   roll_reopen: true
+  #   timeframe: M15
+  #   htf_timeframe: H1
+  #   lot: 1
+  #   strategies: [breakout]
+  #   backtest: { contract_size: 10, spread: 0.1, commission_per_lot: 1.5 }   # MGC: $1 = $10
