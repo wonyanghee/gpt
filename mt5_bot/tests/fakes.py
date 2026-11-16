@@ -54,6 +54,7 @@ class FakeBroker(Broker):
         self.next_ticket = 100
         self.orders: list[tuple] = []
         self.fail_open = False
+        self.vol_limits = (0.01, 0.01, 100.0)
 
     def set_symbol(self, symbol, bars=None, bid=100.0, ask=100.2):
         self.rates[symbol] = bars if bars is not None else make_bars()
@@ -70,6 +71,9 @@ class FakeBroker(Broker):
 
     def spread_points(self, symbol):
         return self.spread
+
+    def volume_limits(self, symbol):
+        return self.vol_limits
 
     def server_now(self, symbol):
         return datetime(2026, 1, 5, 12)

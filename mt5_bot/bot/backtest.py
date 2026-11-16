@@ -7,6 +7,8 @@
 - 같은 봉에서 청산 후 반대 방향 진입 허용 (라이브와 동일).
 - 매매 시간대(sessions)는 session_timezone 이 server 일 때만 반영한다
   (봉 시간이 서버 시간이라 다른 시간대로는 정확히 변환할 수 없음).
+- 수량: sizing=risk_pct 이면 진입 시점 잔고(초기자금 + 누적 실현손익) 기준으로 계산한다.
+  손익은 계좌 통화 = 상품 표시 통화라고 가정한다(환산 없음).
 - 일일 손실 한도/스프레드 필터는 반영하지 않는다(고정 스프레드 사용).
 """
 from __future__ import annotations
@@ -20,6 +22,7 @@ import pandas as pd
 from .config import SymbolConfig
 from .indicators import resample_ohlc, tf_minutes
 from .sessions import minute_in_session
+from .sizing import risk_based_volume
 from .strategies import Strategy
 
 
@@ -30,6 +33,7 @@ class Trade:
     entry_time: pd.Timestamp
     entry_price: float
     sl: float
+    volume: float = 0.0
     exit_time: pd.Timestamp | None = None
     exit_price: float | None = None
     reason: str = ""
@@ -79,6 +83,8 @@ def run_backtest(
     strategies: dict[str, Strategy],
     sl_atr_mult: float,
     initial_balance: float = 10000.0,
+    sizing: str = "fixed",
+    risk_per_trade_pct: float = 1.0,
 ) -> BacktestResult:
     if not strategies:
         raise ValueError("전략이 없습니다")
@@ -101,8 +107,9 @@ def run_backtest(
     close_t = t + pd.Timedelta(minutes=tf_minutes(sc.timeframe))
     session_ok = [minute_in_session(m, windows) for m in close_t.hour * 60 + close_t.minute]
     spread = sc.backtest.spread
-    size = sc.lot * sc.backtest.contract_size
-    commission = sc.backtest.commission_per_lot * sc.lot
+    bt = sc.backtest
+    balance = initial_balance
+    skipped_min_volume = 0
 
     trades: list[Trade] = []
     pos: Trade | None = None
@@ -113,7 +120,12 @@ def run_backtest(
         trade.exit_time = t[i]
         trade.exit_price = price
         trade.reason = reason
-        trade.pnl = (price - trade.entry_price) * trade.direction * size - commission
+        trade.pnl = (
+            (price - trade.entry_price) * trade.direction * trade.volume * bt.contract_size
+            - bt.commission_per_lot * trade.volume
+        )
+        nonlocal balance
+        balance += trade.pnl
         trades.append(trade)
 
     for i in range(len(df)):
@@ -124,7 +136,18 @@ def run_backtest(
         if pending_entry is not None and pos is None:
             d, name, a = pending_entry
             price = o[i] + spread if d > 0 else o[i]
-            pos = Trade(name, d, t[i], price, price - d * a * sl_atr_mult)
+            sl = price - d * a * sl_atr_mult
+            if sizing == "risk_pct":
+                volume = risk_based_volume(
+                    balance, risk_per_trade_pct, abs(price - sl) * bt.contract_size,
+                    bt.volume_min, bt.volume_step, 0.0, sc.max_lot,
+                )
+            else:
+                volume = sc.lot
+            if volume > 0:
+                pos = Trade(name, d, t[i], price, sl, volume)
+            else:
+                skipped_min_volume += 1
         pending_exit = False
         pending_entry = None
 
@@ -164,7 +187,12 @@ def run_backtest(
         equity = pd.Series(
             initial_balance + trades_df["pnl"].cumsum().to_numpy(), index=trades_df["exit_time"]
         )
-    return BacktestResult(trades_df, equity, compute_stats(trades_df, equity, initial_balance))
+    stats = compute_stats(trades_df, equity, initial_balance)
+    if sizing == "risk_pct":
+        stats["수량부족 진입포기"] = skipped_min_volume
+        if not trades_df.empty:
+            stats["평균수량"] = round(float(trades_df["volume"].mean()), 4)
+    return BacktestResult(trades_df, equity, stats)
 
 
 def compute_stats(trades: pd.DataFrame, equity: pd.Series, initial_balance: float) -> dict:

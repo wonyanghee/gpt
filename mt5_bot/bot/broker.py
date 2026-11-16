@@ -70,6 +70,10 @@ class Broker:
     def get_rates(self, symbol: str, timeframe: str, count: int) -> pd.DataFrame: ...
     def get_tick(self, symbol: str) -> Tick: ...
     def spread_points(self, symbol: str) -> float: ...
+    def volume_limits(self, symbol: str) -> tuple[float, float, float]:
+        """(최소 수량, 수량 단위, 최대 수량)"""
+        ...
+
     def server_now(self, symbol: str) -> datetime: ...
     def positions(self, magic: int) -> list[Position]: ...
     def open_position(
@@ -201,6 +205,10 @@ class MT5Broker(Broker):
         info = self._select(symbol)
         tick = self.get_tick(symbol)
         return (tick.ask - tick.bid) / info.point
+
+    def volume_limits(self, symbol: str) -> tuple[float, float, float]:
+        info = self._select(symbol)
+        return float(info.volume_min), float(info.volume_step or info.volume_min), float(info.volume_max)
 
     def server_now(self, symbol: str) -> datetime:
         return self.get_tick(symbol).time
@@ -379,6 +387,9 @@ class DryRunBroker(Broker):
 
     def spread_points(self, symbol):
         return self.market.spread_points(symbol)
+
+    def volume_limits(self, symbol):
+        return self.market.volume_limits(symbol)
 
     def server_now(self, symbol):
         return self.market.server_now(symbol)

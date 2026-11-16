@@ -11,6 +11,7 @@ from .config import BotConfig, SymbolConfig
 from .indicators import atr
 from .notify import Notifier, TradeLog
 from .sessions import in_session
+from .sizing import risk_based_volume
 from .strategies import Strategy, make_strategy
 
 log = logging.getLogger(__name__)
@@ -130,7 +131,8 @@ class Engine:
                     continue
                 if sc.roll_reopen:
                     a = atr(df, self.cfg.risk.sl_atr_period).iloc[-1]
-                    self._open(sc, symbol, p.direction, a, p.comment or sc.strategies[0], "롤오버 재진입")
+                    self._open(sc, symbol, p.direction, a, p.comment or sc.strategies[0], "롤오버 재진입",
+                               volume=p.volume)
             mine = [p for p in self.broker.positions(magic) if sc.owns_symbol(p.symbol, symbol)]
 
         # 새 봉이 완성됐을 때만 신호 판단
@@ -198,16 +200,42 @@ class Engine:
             now = datetime.now(ZoneInfo(sc.session_timezone))
         return in_session(now, windows)
 
+    def _volume(self, sc: SymbolConfig, symbol: str, direction: int, price: float, sl: float) -> float:
+        """주문 수량. risk_pct 모드에서 최소 수량으로도 위험 한도를 넘으면 0."""
+        risk = self.cfg.risk
+        if risk.sizing != "risk_pct":
+            return sc.lot
+        loss_per_lot = abs(self.broker.calc_profit(symbol, direction, 1.0, price, sl))
+        vmin, vstep, vmax = self.broker.volume_limits(symbol)
+        balance = self.broker.account_balance()
+        volume = risk_based_volume(balance, risk.risk_per_trade_pct, loss_per_lot, vmin, vstep, vmax, sc.max_lot)
+        if volume <= 0:
+            self.notifier.send(
+                f"[{sc.key}] {symbol} {DIR_NAME[direction]} 진입 보류: 최소 수량 {vmin}랏의 손절 손실 "
+                f"{loss_per_lot * vmin:,.2f} 이 위험 한도 {balance * risk.risk_per_trade_pct / 100:,.2f} "
+                f"(잔고의 {risk.risk_per_trade_pct}%) 를 넘습니다"
+            )
+        else:
+            log.info(
+                "[%s] 수량 %.4g랏 = 잔고 %.2f x %.2f%% / 1랏 손절손실 %.2f",
+                sc.key, volume, balance, risk.risk_per_trade_pct, loss_per_lot,
+            )
+        return volume
+
     def _open(self, sc: SymbolConfig, symbol: str, direction: int, atr_value: float,
-              strategy: str, reason: str) -> bool:
+              strategy: str, reason: str, volume: float | None = None) -> bool:
         tick = self.broker.get_tick(symbol)
         price = tick.ask if direction > 0 else tick.bid
         sl = price - direction * atr_value * self.cfg.risk.sl_atr_mult
-        res = self.broker.open_position(symbol, direction, sc.lot, sl, self.cfg.magic, strategy)
+        if volume is None:  # 롤오버 재진입은 기존 수량 유지
+            volume = self._volume(sc, symbol, direction, price, sl)
+            if volume <= 0:
+                return False
+        res = self.broker.open_position(symbol, direction, volume, sl, self.cfg.magic, strategy)
         if not res.ok:
             self._notify_error(f"[{sc.key}] {symbol} {DIR_NAME[direction]} 진입 실패: {res.message}")
             return False
-        pos = Position(res.ticket or 0, symbol, direction, res.volume or sc.lot,
+        pos = Position(res.ticket or 0, symbol, direction, res.volume or volume,
                        res.price or price, res.sl or sl, 0.0, strategy)
         if res.ticket:
             self.known_positions[res.ticket] = pos

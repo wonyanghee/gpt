@@ -22,6 +22,8 @@ class BacktestSymbolConfig:
     contract_size: float = 1.0  # 가격 1 변동 시 1랏(1계약) 손익
     spread: float = 0.0  # 가격 단위 스프레드
     commission_per_lot: float = 0.0  # 왕복 수수료 (1랏당)
+    volume_min: float = 0.01  # 최소 주문 수량 (risk_pct 수량 계산용)
+    volume_step: float = 0.01  # 수량 단위
 
 
 @dataclass
@@ -32,7 +34,8 @@ class SymbolConfig:
     root: str | None = None  # 선물 루트 (예: MNQ, MGC)
     timeframe: str = "M15"
     htf_timeframe: str | None = "H1"
-    lot: float = 0.01
+    lot: float = 0.01  # sizing=fixed 일 때 주문 수량
+    max_lot: float = 0.0  # sizing=risk_pct 일 때 수량 상한 (0 = 상한 없음)
     max_spread_points: float = 0.0  # 0 이면 스프레드 필터 끔
     sessions: list[str] = field(default_factory=list)  # 신규 진입 허용 시간대, 비우면 제한 없음
     session_timezone: str = "server"  # server(브로커 서버 시간) 또는 IANA 시간대 (예: Asia/Seoul)
@@ -65,6 +68,8 @@ class RiskConfig:
     close_all_on_daily_limit: bool = False
     sl_atr_mult: float = 3.0  # 비상 손절 = ATR x 배수
     sl_atr_period: int = 14  # 롤오버 재진입 시 손절 계산용
+    sizing: str = "fixed"  # fixed(고정 랏) | risk_pct(계좌 위험 % 기준)
+    risk_per_trade_pct: float = 1.0  # risk_pct: 비상손절 시 잃을 잔고 비율(%)
 
 
 @dataclass
@@ -136,6 +141,10 @@ def _symbol_from_dict(d: dict) -> SymbolConfig:
             ) from exc
     if sc.lot <= 0:
         raise ConfigError(f"[{sc.key}] lot 은 0보다 커야 합니다")
+    if sc.max_lot < 0:
+        raise ConfigError(f"[{sc.key}] max_lot 은 0 이상이어야 합니다")
+    if bt.volume_step <= 0 or bt.volume_min <= 0:
+        raise ConfigError(f"[{sc.key}] backtest.volume_min/volume_step 은 0보다 커야 합니다")
     return sc
 
 
@@ -165,6 +174,13 @@ def config_from_dict(raw: dict, base_dir: Path | None = None) -> BotConfig:
         risk = RiskConfig(**(raw.get("risk", {}) or {}))
     except TypeError as exc:
         raise ConfigError(f"risk 설정 오류: {exc}") from exc
+
+    if risk.sizing not in ("fixed", "risk_pct"):
+        raise ConfigError("risk.sizing 은 fixed 또는 risk_pct 여야 합니다")
+    if not 0 < risk.risk_per_trade_pct <= 10:
+        raise ConfigError("risk.risk_per_trade_pct 는 0 초과 10 이하여야 합니다 (보통 0.5~2)")
+    if risk.sl_atr_mult <= 0:
+        raise ConfigError("risk.sl_atr_mult 는 0보다 커야 합니다")
 
     strategy_params = raw.get("strategy_params", {}) or {}
     for name in strategy_params:
