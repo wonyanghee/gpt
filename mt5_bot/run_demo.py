@@ -3,7 +3,8 @@
     python run_demo.py                       # 가상 시세 20거래일을 빠르게 재생
     python run_demo.py --speed 0.05          # 봉 하나당 0.05초씩 천천히 (실시간 느낌)
     python run_demo.py --days 40 --seed 7    # 기간/시세 바꾸기
-    python run_demo.py --export demo.json    # 결과를 JSON 으로 저장 (시각화용)
+    python run_demo.py --html demo.html      # 브라우저로 바로 열어 보는 재생 화면 만들기
+    python run_demo.py --export demo.json    # 결과를 JSON 으로 저장
 
 주의: 시세는 무작위로 만든 가상 데이터입니다. 여기서 나온 손익은 전략 성능의 근거가 아닙니다.
 """
@@ -44,6 +45,19 @@ class DemoNotifier(Notifier):
             print(f"{now:%m-%d %H:%M}  {text}")
 
 
+def build_html(data_json: str) -> str:
+    """demo_template.html 에 결과 데이터를 넣어 혼자 열리는 HTML 파일을 만든다."""
+    template = (HERE / "demo_template.html").read_text(encoding="utf-8")
+    head, body = template.split("</style>", 1)
+    body = body.replace("/*__DATA__*/", data_json.replace("</", "<\\/"))
+    return (
+        '<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        + head + "html, body { margin: 0; }\n[hidden] { display: none !important; }\n</style>\n</head>\n<body>"
+        + body + "</body>\n</html>\n"
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="MT5 없이 돌려보는 자동매매 데모")
     ap.add_argument("--config", default=str(HERE / "config.demo.yaml"))
@@ -51,6 +65,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42, help="가상 시세 난수 시드")
     ap.add_argument("--speed", type=float, default=0.0, help="봉 하나당 대기 시간(초)")
     ap.add_argument("--export", help="결과 JSON 저장 경로")
+    ap.add_argument("--html", help="브라우저로 여는 재생 화면(HTML) 저장 경로")
     ap.add_argument("--quiet", action="store_true", help="매매 로그 출력 생략")
     args = ap.parse_args()
 
@@ -104,7 +119,7 @@ def main() -> int:
         print(f"  {sym}: {len(st)}건, 손익 {sum(t.pnl for t in st):,.2f}")
     print(f"거래 기록: {trade_log.path}")
 
-    if args.export:
+    if args.export or args.html:
         out = {
             "meta": {"days": args.days, "seed": args.seed, "start_balance": start_balance,
                      "risk_pct": cfg.risk.risk_per_trade_pct, "sizing": cfg.risk.sizing,
@@ -138,8 +153,13 @@ def main() -> int:
                 "l": b["low"].round(2).tolist(), "c": b["close"].round(2).tolist(),
                 "fast": fast.round(2).tolist(), "slow": slow.round(2).tolist(),
             }
-        Path(args.export).write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        print(f"JSON 저장: {args.export}")
+        data = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+        if args.export:
+            Path(args.export).write_text(data, encoding="utf-8")
+            print(f"JSON 저장: {args.export}")
+        if args.html:
+            Path(args.html).write_text(build_html(data), encoding="utf-8")
+            print(f"재생 화면 저장: {args.html} (브라우저로 열어 보세요)")
     return 0
 
 

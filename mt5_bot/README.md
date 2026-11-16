@@ -54,9 +54,11 @@ pip install pandas numpy pyyaml
 python run_demo.py                      # 가상 시세 20거래일 재생 (약 30초)
 python run_demo.py --speed 0.05         # 봉 하나당 0.05초씩 천천히
 python run_demo.py --days 40 --seed 7   # 기간 / 시세 바꾸기
+python run_demo.py --html demo.html     # 브라우저로 바로 여는 재생 화면 만들기
 python run_demo.py --export demo.json   # 봉·거래·평가금액을 JSON 으로 저장
 ```
 
+- **`demo.html` 을 더블클릭하면 브라우저에서 바로 재생 화면이 열립니다** (기본 실행 결과가 저장소에 들어 있음. 서버 불필요)
 - 설정은 `config.demo.yaml` (잔고 10,000, 거래당 위험 1%). 거래 기록은 `logs/demo_trades.csv`
 - **시세는 무작위로 만든 가상 데이터**입니다. 추세 구간과 횡보 구간이 섞여 나오도록 만들었을 뿐 실제 시장과 다르며,
   데모 손익은 전략 성능의 근거가 아닙니다. 성능은 1단계 백테스트에서 실제 과거 데이터로 확인하세요
