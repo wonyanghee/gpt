@@ -64,6 +64,12 @@ def main() -> int:
 
     print(f"[{sc.key}] {symbol} {sc.timeframe} {df.index[0]} ~ {df.index[-1]} ({len(df):,}봉)")
     print(f"전략: {list(strategies)} / 랏 {sc.lot} / 비상손절 ATR x {cfg.risk.sl_atr_mult}")
+    if sc.sessions:
+        if sc.session_timezone == "server":
+            print(f"매매 시간대(서버 시간): {sc.sessions}")
+        else:
+            print(f"주의: session_timezone={sc.session_timezone} 는 백테스트에 반영되지 않습니다 "
+                  "(server 시간대만 반영). 결과가 라이브와 다를 수 있습니다.")
     result = run_backtest(df, sc, strategies, cfg.risk.sl_atr_mult, cfg.backtest_initial_balance)
     print(json.dumps(result.stats, ensure_ascii=False, indent=2))
 

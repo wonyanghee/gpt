@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -10,6 +10,7 @@ from .broker import Broker, Position
 from .config import BotConfig, SymbolConfig
 from .indicators import atr
 from .notify import Notifier, TradeLog
+from .sessions import in_session
 from .strategies import Strategy, make_strategy
 
 log = logging.getLogger(__name__)
@@ -164,6 +165,10 @@ class Engine:
         if halted:
             log.info("[%s] 일일손실 한도로 진입 보류", sc.key)
             return
+        if not self._in_session(sc, symbol):
+            if any(int(sig["entry"]) != 0 for sig in signals.values()):
+                log.info("[%s] 매매 시간대(%s, %s) 밖이라 진입 보류", sc.key, sc.sessions, sc.session_timezone)
+            return
         for name in sc.strategies:
             sig = signals[name]
             direction = int(sig["entry"])
@@ -181,6 +186,18 @@ class Engine:
             return
 
     # ------------------------------------------------------------------
+    def _in_session(self, sc: SymbolConfig, symbol: str) -> bool:
+        windows = sc.session_windows
+        if not windows:
+            return True
+        if sc.session_timezone == "server":
+            now = self.broker.server_now(symbol)
+        else:
+            from zoneinfo import ZoneInfo
+
+            now = datetime.now(ZoneInfo(sc.session_timezone))
+        return in_session(now, windows)
+
     def _open(self, sc: SymbolConfig, symbol: str, direction: int, atr_value: float,
               strategy: str, reason: str) -> bool:
         tick = self.broker.get_tick(symbol)

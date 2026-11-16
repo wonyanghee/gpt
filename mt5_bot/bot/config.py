@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from .indicators import TIMEFRAME_MINUTES
+from .sessions import parse_sessions
 from .strategies import STRATEGIES
 
 LIVE_CONFIRM_PHRASE = "I_UNDERSTAND_THE_RISK"
@@ -33,6 +34,8 @@ class SymbolConfig:
     htf_timeframe: str | None = "H1"
     lot: float = 0.01
     max_spread_points: float = 0.0  # 0 이면 스프레드 필터 끔
+    sessions: list[str] = field(default_factory=list)  # 신규 진입 허용 시간대, 비우면 제한 없음
+    session_timezone: str = "server"  # server(브로커 서버 시간) 또는 IANA 시간대 (예: Asia/Seoul)
     strategies: list[str] = field(default_factory=lambda: ["trend"])
     params: dict = field(default_factory=dict)
     roll_days_before_expiry: int = 5
@@ -44,6 +47,10 @@ class SymbolConfig:
     @property
     def is_futures(self) -> bool:
         return self.type == "futures"
+
+    @property
+    def session_windows(self) -> list[tuple[int, int]]:
+        return parse_sessions(self.sessions)
 
     def owns_symbol(self, name: str, active_symbol: str) -> bool:
         """이 설정이 관리하는 포지션인지 (선물은 이전 월물 포함)."""
@@ -111,6 +118,22 @@ def _symbol_from_dict(d: dict) -> SymbolConfig:
     for name in sc.strategies:
         if name not in STRATEGIES:
             raise ConfigError(f"[{sc.key}] 알 수 없는 전략: {name}")
+    if isinstance(sc.sessions, str):
+        sc.sessions = [sc.sessions]
+    try:
+        parse_sessions(sc.sessions)
+    except ValueError as exc:
+        raise ConfigError(f"[{sc.key}] sessions {exc}") from exc
+    if sc.session_timezone != "server":
+        try:
+            from zoneinfo import ZoneInfo
+
+            ZoneInfo(sc.session_timezone)
+        except Exception as exc:
+            raise ConfigError(
+                f"[{sc.key}] session_timezone 을 찾을 수 없습니다: {sc.session_timezone} "
+                "(예: Asia/Seoul, America/New_York. Windows 는 `pip install tzdata` 필요)"
+            ) from exc
     if sc.lot <= 0:
         raise ConfigError(f"[{sc.key}] lot 은 0보다 커야 합니다")
     return sc

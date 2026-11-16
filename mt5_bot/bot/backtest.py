@@ -5,6 +5,8 @@
 - 신호는 봉 종가에서 판단하고 '다음 봉 시가'에 체결.
 - 비상 손절(ATR x sl_atr_mult)은 봉 내부 고가/저가로 체크하고, 시가 갭이면 시가로 체결.
 - 같은 봉에서 청산 후 반대 방향 진입 허용 (라이브와 동일).
+- 매매 시간대(sessions)는 session_timezone 이 server 일 때만 반영한다
+  (봉 시간이 서버 시간이라 다른 시간대로는 정확히 변환할 수 없음).
 - 일일 손실 한도/스프레드 필터는 반영하지 않는다(고정 스프레드 사용).
 """
 from __future__ import annotations
@@ -16,7 +18,8 @@ import numpy as np
 import pandas as pd
 
 from .config import SymbolConfig
-from .indicators import resample_ohlc
+from .indicators import resample_ohlc, tf_minutes
+from .sessions import minute_in_session
 from .strategies import Strategy
 
 
@@ -93,6 +96,10 @@ def run_backtest(
     l = df["low"].to_numpy()  # noqa: E741
     c = df["close"].to_numpy()
     t = df.index
+    # 진입 판단 시각 = 봉이 완성되는 시각 (라이브와 동일)
+    windows = sc.session_windows if sc.session_timezone == "server" else []
+    close_t = t + pd.Timedelta(minutes=tf_minutes(sc.timeframe))
+    session_ok = [minute_in_session(m, windows) for m in close_t.hour * 60 + close_t.minute]
     spread = sc.backtest.spread
     size = sc.lot * sc.backtest.contract_size
     commission = sc.backtest.commission_per_lot * sc.lot
@@ -138,7 +145,7 @@ def run_backtest(
             n = pos.strategy
             if (pos.direction > 0 and exit_l[n][i]) or (pos.direction < 0 and exit_s[n][i]):
                 pending_exit = True
-        if pos is None or pending_exit:
+        if (pos is None or pending_exit) and session_ok[i]:
             for n in order:
                 d = int(entry[n][i])
                 if d != 0 and not np.isnan(atr_[n][i]):

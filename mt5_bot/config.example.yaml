@@ -57,6 +57,11 @@ symbols:
     htf_timeframe: H1
     lot: 0.1                 # 고정 랏
     max_spread_points: 300   # 스프레드가 300 포인트 초과면 진입 보류 (0 = 끔) - 브로커 point 단위 확인
+    # 매매 시간대: 이 시간에만 신규 진입 (청산·손절은 시간과 무관하게 동작). 비우면([]) 제한 없음
+    #   "시작-종료" 여러 개 가능, 시작 포함·종료 제외, "22:00-02:00" 처럼 자정 넘김 가능
+    sessions: []             # 예: ["16:30-23:00"]  (서버 시간 기준 뉴욕 정규장 등)
+    session_timezone: server # server = 브로커 서버 시간(MT5 차트 시간). 또는 Asia/Seoul, America/New_York 등
+                             # ※ 백테스트는 server 일 때만 시간대 제한을 반영합니다
     strategies: [trend, breakout]   # 앞에 있는 전략 신호가 우선. 하나만 쓰려면 [trend]
     params: {}               # 예: { trend: { adx_min: 25 } }
     backtest:
@@ -71,6 +76,8 @@ symbols:
     htf_timeframe: H1
     lot: 0.01
     max_spread_points: 60
+    sessions: []             # 예: ["10:00-12:00", "15:30-22:00"]  (런던 오전 + 뉴욕 세션)
+    session_timezone: server
     strategies: [breakout, trend]
     params: {}
     backtest:
