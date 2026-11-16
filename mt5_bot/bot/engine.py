@@ -19,6 +19,10 @@ log = logging.getLogger(__name__)
 DIR_NAME = {1: "매수", -1: "매도"}
 
 
+def fmt_price(x: float) -> str:
+    return f"{x:.5f}".rstrip("0").rstrip(".")
+
+
 class RiskManager:
     """일일 최대손실 도달 시 그날은 신규 진입을 멈춘다."""
 
@@ -260,9 +264,9 @@ class Engine:
         label = {"open": "진입", "close": "청산", "stop": "손절", "closed_by_server": "종료"}.get(action, action)
         text = f"{label} {pos.symbol} {DIR_NAME.get(pos.direction, '')} {pos.volume}랏"
         if price is not None:
-            text += f" @ {price}"
+            text += f" @ {fmt_price(price)}"
         if action == "open":
-            text += f" (SL {pos.sl:.5g})"
+            text += f" (SL {fmt_price(pos.sl)})"
         if profit is not None:
             text += f" 손익 {profit:,.2f}"
         text += f" [{strategy}] {reason}"

@@ -28,6 +28,8 @@ mt5_bot/
 ├── config.example.yaml   # 설정 예시 (config.yaml 로 복사해서 사용)
 ├── run_bot.py            # 라이브/드라이런 실행
 ├── run_backtest.py       # 백테스트 실행
+├── run_demo.py           # MT5 없이 돌려보는 데모 (가상 시세)
+├── config.demo.yaml      # 데모 전용 설정
 ├── bot/
 │   ├── indicators.py     # EMA, ATR, ADX, 상위봉 정렬(미래참조 방지), 리샘플
 │   ├── strategies.py     # 추세추종 / 박스권 돌파 전략
@@ -36,10 +38,28 @@ mt5_bot/
 │   ├── backtest.py       # 백테스트 엔진 + 통계 + CSV 로더(MT5 내보내기 형식 지원)
 │   ├── sizing.py         # 수량 계산 (고정 랏 / 계좌 위험 %)
 │   ├── sessions.py       # 매매 시간대 제한
+│   ├── sim.py            # 시뮬레이션 브로커 + 가상 시세 생성기 (데모용)
 │   ├── notify.py         # 텔레그램 알림, CSV 거래기록
 │   └── config.py         # 설정 로딩/검증
 └── tests/                # pytest (MT5 없이 실행 가능)
 ```
+
+## 0단계: 데모 (MT5 없이, 어느 OS에서나)
+
+봇이 어떻게 움직이는지 먼저 보고 싶다면 가상 시세로 돌려볼 수 있습니다. 라이브와 **같은 매매 엔진**이
+시뮬레이션 브로커(`bot/sim.py`)에 연결되어 진입·반대 신호 청산·비상 손절·수량 계산·일일 손실 한도가 그대로 동작합니다.
+
+```bash
+pip install pandas numpy pyyaml
+python run_demo.py                      # 가상 시세 20거래일 재생 (약 30초)
+python run_demo.py --speed 0.05         # 봉 하나당 0.05초씩 천천히
+python run_demo.py --days 40 --seed 7   # 기간 / 시세 바꾸기
+python run_demo.py --export demo.json   # 봉·거래·평가금액을 JSON 으로 저장
+```
+
+- 설정은 `config.demo.yaml` (잔고 10,000, 거래당 위험 1%). 거래 기록은 `logs/demo_trades.csv`
+- **시세는 무작위로 만든 가상 데이터**입니다. 추세 구간과 횡보 구간이 섞여 나오도록 만들었을 뿐 실제 시장과 다르며,
+  데모 손익은 전략 성능의 근거가 아닙니다. 성능은 1단계 백테스트에서 실제 과거 데이터로 확인하세요
 
 ## 설치 (Windows)
 

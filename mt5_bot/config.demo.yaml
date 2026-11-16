@@ -1,0 +1,39 @@
+# 데모(시뮬레이션) 전용 설정 - run_demo.py 가 사용합니다. MT5 가 필요 없습니다.
+# 가상 시세에서 봇이 어떻게 진입/청산/손절하는지 보기 위한 설정입니다.
+
+mode:
+  dry_run: true
+
+risk:
+  daily_max_loss_pct: 3.0
+  sl_atr_mult: 3.0
+  sizing: risk_pct           # 한 번 손절 시 잔고의 1% 손실이 되도록 수량 계산
+  risk_per_trade_pct: 1.0
+
+backtest:
+  initial_balance: 10000     # 데모 시작 잔고
+
+strategy_params:
+  trend:    { fast: 20, slow: 50, htf_ema: 200, adx_period: 14, adx_min: 20, atr_period: 14 }
+  breakout: { lookback: 20, exit_lookback: 10, atr_period: 14, max_box_atr: 5.0, buffer_atr: 0.1 }
+
+symbols:
+  - key: NASDAQ
+    type: cfd
+    symbol: US100
+    timeframe: M15
+    htf_timeframe: H1
+    lot: 0.1
+    max_spread_points: 300
+    strategies: [trend, breakout]
+    backtest: { contract_size: 1, spread: 1.5, volume_min: 0.01, volume_step: 0.01 }
+
+  - key: GOLD
+    type: cfd
+    symbol: XAUUSD
+    timeframe: M15
+    htf_timeframe: H1
+    lot: 0.01
+    max_spread_points: 60
+    strategies: [breakout, trend]
+    backtest: { contract_size: 100, spread: 0.3, volume_min: 0.01, volume_step: 0.01 }
