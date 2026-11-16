@@ -2,30 +2,40 @@
 
 ## mt5_bot/ — MT5 나스닥·금 자동매매 봇
 
-사용법과 구조는 `mt5_bot/README.md`, 에이전트 팀 설명은 `mt5_bot/docs/agent-team.md` 에 있습니다.
+- 봇 사용법과 구조: `mt5_bot/README.md`
+- 에이전트 팀 운영 개요와 R&R: `mt5_bot/docs/manual/00-overview.md`
+- 작업 기록: `mt5_bot/work/LEDGER.md` (작업대장), `mt5_bot/work/<작업>/`
 
-### 작업 절차 (총괄 = 메인 세션)
-코드 변경 요청은 서브에이전트에게 나눠 맡기고 아래 순서로 진행합니다.
+### 작업 방식 (메인 세션 = 감독관)
+전략 연구, 운영 기록 분석, 봇 코드 변경 요청은 단계별 팀으로 진행한다. 절차는 `mt5_bot/docs/manual/supervisor.md` 를 따른다
+(`mt5-pipeline` 스킬이 같은 절차를 안내한다).
 
-1. `mt5-bot-developer` 가 구현하고 테스트를 작성한다.
-2. `mt5-test-engineer` 가 pytest 와 데모 회귀를 확인한다.
-3. 아래 파일이 바뀌었으면 `mt5-risk-reviewer` 가 검토한다. **차단** 판정이면 개발자에게 되돌린다.
-   `engine.py`, `broker.py`, `sizing.py`, `sessions.py`, `strategies.py`, `config.py`, `backtest.py`, `run_bot.py`
-4. 결과를 사용자에게 보고한다. **커밋과 푸시는 사용자가 승인한 뒤에** 한다.
+```
+작업지시서(감독관) → 정보수집 mt5-collector → 데이터 정리 mt5-organizer
+  → (코드 변경만) 구현 mt5-bot-developer + tools/check.py
+  → 감수/검증 mt5-verifier → 최종검토 보고 mt5-reporter → 사용자 보고
+```
 
-- 전략·백테스트·파라미터 질문은 `mt5-strategy-researcher` 에게 맡긴다. 연구원은 제안만 하고, 적용 여부는 사용자가 정한다.
-- 로그·거래 기록 분석은 `mt5-ops-analyst` 에게 맡긴다. 보고서는 `mt5_bot/reports/` 에 저장된다.
-- 오타 수정처럼 동작이 바뀌지 않는 작은 변경은 총괄이 직접 해도 된다.
+- 감독관은 작업지시서에 단계별 시작·종료 조건과 한도를 정하고, 단계마다 산출물 파일을 직접 확인해 게이트를 판정한다.
+- 인계는 작업 폴더의 파일로만 한다. 에이전트에게는 작업 폴더 경로와 단계만 알려준다.
+- 게이트 판정과 근거는 `python tools/task.py gate …` 로 기록한다. 보완 3회면 중단하고 사용자에게 넘긴다.
+- 검증자의 차단 의견은 통과시키지 않는다.
+- 작업이 끝나면 최종 보고서의 매뉴얼 개정 제안을 검토해 매뉴얼과 개정 이력에 반영한다.
+- 오타 수정이나 문서 손질처럼 봇의 동작이 바뀌지 않는 작은 일, 단순 질문은 감독관이 직접 처리해도 된다.
+
+### 커밋 규칙
+- 작업 브랜치 커밋은 기록이다. 게이트를 통과할 때마다 커밋·푸시한다.
+- main 브랜치 병합, 전략·파라미터 채택, 데모 회귀 기준값 변경은 사용자가 승인한다.
 
 ### 안전 규칙
-- 실거래 설정은 사람만 한다. `mt5_bot/config.yaml` 을 만들거나 고치지 않고, `dry_run: false` 나 실거래 확인 문구를
-  넣지 않으며, `run_bot.py` 를 실행하지 않는다. 실행해도 되는 것은 `pytest`, `run_backtest.py`, `run_demo.py` 뿐이다.
-- `.claude/hooks/mt5_guard.py` 가 위 두 가지(운영 설정 수정, `run_bot.py` 실행)를 도구 호출 단계에서 막는다.
+- 실거래 설정은 사람만 한다. 운영 설정 파일(`mt5_bot/config.yaml`)을 만들거나 고치지 않고, 실거래 모드를 켜는 값을 넣지 않으며,
+  라이브 봇 실행 스크립트(`run_bot.py`)를 실행하지 않는다. 실행해도 되는 것은 `pytest`, `run_backtest.py`, `run_demo.py`, `tools/` 스크립트뿐이다.
+- `.claude/hooks/mt5_guard.py` 가 운영 설정 수정과 라이브 봇 실행을 도구 호출 단계에서 막는다.
 - 비밀정보(계좌, 비밀번호, 토큰)를 파일에 쓰지 않는다.
 - 가상 시세 데모 결과를 전략 성능의 근거로 쓰지 않는다.
 
 ### 검증 명령
 ```bash
-cd mt5_bot && python -m pytest -q        # 테스트
-cd mt5_bot && python run_demo.py --quiet # 데모 회귀 (기본 시드 기준: 거래 115건, 비상손절 27건)
+cd mt5_bot && python tools/check.py              # 테스트 + 데모 회귀 + 안전장치 (약 40초)
+cd mt5_bot && python tools/check.py --skip-demo  # 빠른 검사
 ```

@@ -11,7 +11,9 @@ import re
 import sys
 
 RUN_BOT = re.compile(r"(^|[\s;&|(`])(py|python[\w.]*)(\.exe)?\s+(-\S+\s+)*[\"']?(\S*[\\/])?run_bot\.py")
-WRITE_CONFIG = re.compile(r"(>|\btee\b|\bcp\b|\bmv\b|\bsed\s+-i|\bcopy\b)[^|;&]*mt5_bot[\\/]config\.yaml")
+WRITE_CONFIG = re.compile(r"(>|\btee\b|\bcp\b|\bmv\b|\bsed\s+-i|\bcopy\b)[^|;&\n]*mt5_bot[\\/]config\.yaml(?![\w.])")
+# `cat > 파일 <<'EOF' ... EOF` 로 파일에 쓰는 본문은 실행되는 명령이 아니므로 검사에서 뺀다
+CAT_HEREDOC = re.compile(r"(\bcat\b[^\n|;&]*)<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n.*?\n\2[ \t]*(?=\n|$)", re.S)
 
 
 def main() -> int:
@@ -29,7 +31,7 @@ def main() -> int:
                   "config.example.yaml 이나 스크래치 폴더의 사본을 쓰세요.", file=sys.stderr)
             return 2
     elif tool == "Bash":
-        cmd = str(inp.get("command", ""))
+        cmd = CAT_HEREDOC.sub(r"\1", str(inp.get("command", "")))
         if RUN_BOT.search(cmd):
             print("차단: run_bot.py 는 사람이 직접 실행합니다. "
                   "에이전트는 pytest, run_backtest.py, run_demo.py 만 실행할 수 있습니다.", file=sys.stderr)
