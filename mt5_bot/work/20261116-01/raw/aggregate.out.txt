@@ -1,0 +1,22 @@
+file: demo_trades.csv
+columns: ['time', 'mode', 'key', 'symbol', 'action', 'direction', 'volume', 'price', 'sl', 'strategy', 'reason', 'ticket', 'profit']
+data rows: 231
+action counts: {'open': 116, 'close': 88, 'stop': 27}
+mode counts: {'DEMO': 231}
+symbol x action: {('US100', 'close'): 47, ('US100', 'open'): 63, ('US100', 'stop'): 15, ('XAUUSD', 'close'): 41, ('XAUUSD', 'open'): 53, ('XAUUSD', 'stop'): 12}
+empty profit by action: {'open': 116}
+nonempty profit by action: {'close': 88, 'stop': 27}
+empty cells in key: 115
+empty cells in profit: 116
+--- item 2: by symbol (action in close/stop)
+US100 rows 62 profit>0 19 profit==0 0 profit<0 43 profit sum -1202.390800000015389
+XAUUSD rows 53 profit>0 17 profit==0 0 profit<0 36 profit sum -558.6400000001208186
+ALL rows 115 profit>0 36 profit sum -1761.0308000001362076
+--- item 3: by action
+close rows 88 profit sum 629.9126999998662724
+stop rows 27 profit sum -2390.94350000000248
+--- item 5: time
+min 2026-11-16T08:09:03 max 2026-11-16T08:09:32 distinct 30
+distinct time values: {'2026-11-16T08:09:03': 1, '2026-11-16T08:09:04': 8, '2026-11-16T08:09:05': 12, '2026-11-16T08:09:06': 7, '2026-11-16T08:09:07': 13, '2026-11-16T08:09:08': 5, '2026-11-16T08:09:09': 9, '2026-11-16T08:09:10': 7, '2026-11-16T08:09:11': 10, '2026-11-16T08:09:12': 11, '2026-11-16T08:09:13': 8, '2026-11-16T08:09:14': 9, '2026-11-16T08:09:15': 9, '2026-11-16T08:09:16': 2, '2026-11-16T08:09:17': 9, '2026-11-16T08:09:18': 8, '2026-11-16T08:09:19': 7, '2026-11-16T08:09:20': 11, '2026-11-16T08:09:21': 7, '2026-11-16T08:09:22': 10, '2026-11-16T08:09:23': 9, '2026-11-16T08:09:24': 5, '2026-11-16T08:09:25': 9, '2026-11-16T08:09:26': 9, '2026-11-16T08:09:27': 3, '2026-11-16T08:09:28': 12, '2026-11-16T08:09:29': 1, '2026-11-16T08:09:30': 10, '2026-11-16T08:09:31': 3, '2026-11-16T08:09:32': 7}
+first row: {'time': '2026-11-16T08:09:03', 'mode': 'DEMO', 'key': 'GOLD', 'symbol': 'XAUUSD', 'action': 'open', 'direction': '매도', 'volume': '0.13', 'price': '2564.95', 'sl': '2572.29', 'strategy': 'breakout', 'reason': '진입 신호', 'ticket': '1', 'profit': ''}
+last row: {'time': '2026-11-16T08:09:32', 'mode': 'DEMO', 'key': 'NASDAQ', 'symbol': 'US100', 'action': 'open', 'direction': '매수', 'volume': '1.37', 'price': '19627.85', 'sl': '19567.78', 'strategy': 'breakout', 'reason': '진입 신호', 'ticket': '116', 'profit': ''}
