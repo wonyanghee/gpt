@@ -192,6 +192,7 @@ Claude Code 에서 이 저장소를 열면 단계별 에이전트 팀을 쓸 수
 - 역할별 매뉴얼: [`docs/manual/`](docs/manual/) (감독관, 정보수집, 데이터 정리, 구현, 감수/검증, 최종검토 보고, 유형별 지침)
 - 작업 기록: [`work/LEDGER.md`](work/LEDGER.md)
 - 자동 검사: `python tools/check.py` (테스트 + 데모 회귀 + 안전장치)
+- OpenAI Codex 등 다른 도구: 저장소 루트의 `AGENTS.md` 가 같은 절차를 안내합니다
 
 ## 알아둘 점 / 다음 개선 후보
 
